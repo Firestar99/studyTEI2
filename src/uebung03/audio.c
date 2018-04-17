@@ -2,10 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "wave.h"
-
 #define TRUE 1
 #define FALSE 0
-
 union charArrayToInt {
     char c[4];
     unsigned int i;
@@ -59,6 +57,7 @@ short getChannels()
     {
         printf("Fehler beim lesen der Datei in getChannels");
     }
+    fclose(wave);
     return channels;
 }
 
@@ -78,6 +77,7 @@ unsigned int getSampleRate()
     {
         printf("Fehler beim lesen der Datei in getSampleRate");
     }
+    fclose(wave);
     return sampleRate;
 }
 
@@ -132,6 +132,7 @@ unsigned short getBitsPerSample()
     {
         printf("Fehler beim lesen der Datei in getBitsPerSample");
     }
+    fclose(wave);
     return bitsPerSample;
 }
 
@@ -156,7 +157,7 @@ int findDataAndGetPositionOfLength()
             printf("Fehler beim lesen eines Feldes während der Suche des Data Chunk in readDataChunk");
         }
         //	for debugging purposes
-      //  printf("%i\n %s\n\n", fieldIndex, chunkID);
+        //  printf("%i\n %s\n\n", fieldIndex, chunkID);
 
         fieldIndex = fieldIndex + 4;
     } while (strcmp(chunkID, "data") != 0);
@@ -180,22 +181,20 @@ void getLengthOfData(int *lengthp, int pos)
     {
         printf("Fehler beim lesen der Länge in readDataChunk");
     }
-    else
-    {
-        fclose(wave);
-        *lengthp = *lengthp / 4;
-    }
+
+    fclose(wave);
+    *lengthp = *lengthp / 4;
+    printf("Länge der Daten %i", *lengthp);
 }
 
 float *readDataChunk(int *lengthp)
 {
     FILE *wave;
     float *data;
-    int dataIndex = 0;
     int fieldIndex;
     union charToFloat charFloat;
     char field[4];
-    int fehler = FALSE;
+    int dataIndex = 0;
     fieldIndex = findDataAndGetPositionOfLength();
     getLengthOfData(lengthp, fieldIndex);
 
@@ -211,23 +210,22 @@ float *readDataChunk(int *lengthp)
         if (fseek(wave, fieldIndex, 0) != 0)
         {
             printf("Fehler beim positionieren des Zeigers über die Daten in readDataChunk");
-            fehler = TRUE;
         }
         else if (fread(field, sizeof(char), 4, wave) < 1)
         {
-            printf("Fehler beim lesen eines Feldes in readDataChunk");
-            fehler = TRUE;
+            printf("Fehler beim lesen über die Daten in readDataChunk");
         }
         else
         {
             for (int i = 0; i < 4; i++)
             {
-                charFloat.c[3 - i] = field[i];
+                charFloat.c[i] = field[i];
             }
+
             data[dataIndex] = charFloat.f;
             dataIndex++;
         }
-    } while ((!feof(wave)) && !(fehler = TRUE));
+    } while (dataIndex < *lengthp);
     fclose(wave);
     return data;
 }
@@ -237,12 +235,11 @@ void schneller(float *data, int length, wavheader wave)
     int halfLength = length / 2;
     float halfOfData[halfLength];
     int insert = FALSE;
-    for (int i = 0, j = 0; j < halfLength; i++)
+    for (int i = 0; i < halfLength; i++)
     {
         if (insert == TRUE)
         {
-            halfOfData[j] = data[i];
-            j++;
+            halfOfData[i] = data[i];
             insert = FALSE;
         }
         else
@@ -295,6 +292,8 @@ int main()
 
     wave.byterate = wave.sample_rate * wave.channels * wave.bits_per_sample;
     printf("Audiolänge in Sekunden: %f\n", (float)wave.riff_chunk_header.chunk_size / (float)(wave.byterate / 8));
+    wave.format_type = 3;
+    wave.block_align = wave.channels * wave.bits_per_sample / 8;
 
     data = readDataChunk(dataLengthP);
     writePCM("testClone.wav", data, *dataLengthP, wave);
@@ -302,5 +301,4 @@ int main()
     schneller(data, *dataLengthP, wave);
     free(format);
     free(data);
-
 }
