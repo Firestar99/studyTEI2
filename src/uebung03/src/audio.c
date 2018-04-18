@@ -16,6 +16,10 @@ const int FORMAT_LENGTH = 4;
 const int CHANNEL_OFFSET = 22;
 const int SAMPLE_RATE_OFFSET = 24;
 const int BITS_PER_SAMPLE_OFFSET = 34;
+const int DISTANCE_ID_TO_SIZE = 4;
+const int DISTANCE_ID_TO_DATA = 8;
+const int SUB_CHUNK_2_ID_OFFSET = 36;
+const int FIELD_LENGTH = 4;
 
 //utility
 union charArrayToInt {
@@ -28,7 +32,7 @@ union charToFloat {
 	float f;
 }
 
-setNullTerminator(char *string, int length)
+setNullTerminator(char* string, int length)
 {
 	string[length-1] = '\0';
 }
@@ -73,111 +77,50 @@ unsigned short getBitsPerSample(char* fileData, int fileLength)
 	return *(fileData+BITS_PER_SAMPLE_OFFSET);
 }
 
-int findDataKeyword()
+unsigned int getPositionOfDataID(char* fileData, int fileLength)
 {
-	printf("h1\n");
-	FILE* wave;
-	int fieldIndex = 0;
+	unsigned int position = SUB_CHUNK_2_ID_OFFSET;
 	char chunkID[5];
-	setNullTerminator(chunkID, 5);
-	if ((wave = fopen("test.wav", "r")) == NULL)
+	setNullTerminator(chunkID, FIELD_LENGTH + 1);
+	for(; position < fileLength && strcmp(chunkID, "data") != 0; position += DISTANCE_ID_TO_DATA + (*(fileData+position+DISTANCE_ID_TO_SIZE)))
 	{
-		printf("Fehler beim öffnen der Datei in readDataChumk\n");
+		memcpy(chunkID, fileData+position, FIELD_LENGTH);
+		printf("SubchunkID: %s\n", chunkID);
 	}
-	printf("h2\n");
-	do
+	if(!(strcmp(chunkID, "data") == 0))
 	{
-		if (fseek(wave, fieldIndex, 0) != 0)
-		{
-			printf("Fehler beim positionieren des Zeigers während der Suche des Data Chunk in readDataChunk");
-		}
-		else if (fread(&chunkID, sizeof(char), 4, wave) < 4)
-		{
-			printf("Fehler beim lesen eines Feldes während der Suche des Data Chunk in readDataChunk");
-		}
-		//	for debugging purposes
-		//  printf("%i\n %s\n\n", fieldIndex, chunkID);
-
-		fieldIndex = fieldIndex + 4;
-	} while (strcmp(chunkID, "data") != 0);
-
-	fclose(wave);
-	return fieldIndex;
+	    exit;
+	}
+	return position;
 }
 
-void getLengthOfData(int* lengthp, int pos)
+void getLengthOfData(char* fileData, unsigned int position, int* lengthOfData)
 {
-	printf("g0\n");
-	FILE *wave;
-	if ((wave = fopen("test.wav", "r")) == NULL)
-	{
-		printf("Fehler beim öffnen der Datei in readDataChumk\n");
-		return;
-	}
-	printf("g1 %X\n", pos);
-	if (fseek(wave, pos, 0) != 0)
-	{
-		printf("Fehler beim positionieren des Zeigers auf dataSize in readDataChunk");
-		return;
-	}
-	printf("g2\n");
-	if (fread(lengthp, sizeof(int), 1, wave) != 4)
-	{
-		printf("Fehler beim lesen der Länge in readDataChunk");
-		return;
-	}
-	printf("g3\n");
-
-	fclose(wave);
-	*lengthp = *lengthp / 4;
-	printf("Länge der Daten %i", *lengthp);
+	*lengthOfData = (*(fileData+position+DISTANCE_ID_TO_SIZE)) / 4 ;
 }
 
-float* readDataChunk(int *lengthp)
+float* getFloatArrayOfData(char* fileData, int position, int* lengthOfData)
 {
-	FILE *wave;
-	float *data;
-	int fieldIndex;
-//    union charToFloat charFloat;
-//    char field[4];
-//    int dataIndex = 0;
-	printf("p1\n");
-	fieldIndex = findDataKeyword();
-	printf("p2 %X\n", fieldIndex);
-	getLengthOfData(lengthp, fieldIndex);
-	printf("p3\n");
-
-	//writing the data into the float array
-//    data = (float *)malloc((*lengthp));
-	if ((wave = fopen("test.wav", "r")) == NULL)
+	float* data = malloc(*lengthOfData);
+	position += DISTANCE_ID_TO_DATA;
+	for(int i = 0; position < *lengthOfData; i++)
 	{
-		printf("Fehler beim öffnen der Datei in readDataChumk\n");
+		data[i] = *(fileData+position);
+		position += FIELD_LENGTH;
 	}
-//    do
-//    {
-//        fieldIndex = fieldIndex + 4;
-//        if (fseek(wave, fieldIndex, 0) != 0)
-//        {
-//            printf("Fehler beim positionieren des Zeigers über die Daten in readDataChunk");
-//        }
-//        else if (fread(field, sizeof(char), 4, wave) < 1)
-//        {
-//            printf("Fehler beim lesen über die Daten in readDataChunk");
-//        }
-//        else
-//        {
-//            for (int i = 0; i < 4; i++)
-//            {
-//                charFloat.c[i] = field[i];
-//            }
-//
-//            data[dataIndex] = charFloat.f;
-//            dataIndex++;
-//        }
-//    } while (dataIndex < *lengthp);
-	fclose(wave);
 	return data;
 }
+
+float* readDataChunk(char* fileData, int fileLength ,int *lengthOfData)
+{
+    unsigned int position = getPositionOfDataID(fileData, fileLength);
+    printf("position: %i\n", position);
+    getLengthOfData(fileData, position, lengthOfData);
+    printf("lengthOfData: %i\n", *lengthOfData);
+    return getFloatArrayOfData;
+
+}
+
 
 void schneller(float *data, int length, wavheader wave)
 {
@@ -278,18 +221,17 @@ int main()
 	wave.format_type = 3;
 	wave.block_align = wave.channels * wave.bits_per_sample / 8;
 
-//	printf("point1\n");
-//	int* dataLengthP;
-//	float* data = readDataChunk(dataLengthP);
-//	printf("point2\n");
-////    writePCM("testClone.wav", data, *dataLengthP, wave);
+
+    int* lengthOfData;
+	float* data = readDataChunk(fileData, fileLength, lengthOfData);
+    printf("point2\n");
+//    writePCM("testClone.wav", data, *dataLengthP, wave);
 //	printf("point3\n");
 //
 ////    schneller(data, *dataLengthP, wave);
 //	printf("point4\n");
-//    free(format);
-//    free(data);
 
+    free(data);
 	free(fileData);
 	printf("done\n");
 }
