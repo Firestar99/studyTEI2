@@ -1,0 +1,24 @@
+#!/bin/bash
+
+scriptDir="$(dirname "$0")"
+
+projectName=$1
+
+if [[ $projectName == "" ]]
+then
+  echo "No project dir specified!"
+  exit 1
+fi
+
+projectPath="$scriptDir/$projectName"
+if [ -d $projectPath ]
+then
+  echo "Project Directory $projectPath"
+fi
+
+echo "Creating Project Named $projectName"
+
+mkdir $projectPath
+cd $projectPath
+mkdir src
+ln -s ../build build
