@@ -1,24 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "wave.h"
-
-#define TRUE 1
-#define FALSE 0
 
 const int RIFF_HEADER_OFFSET = 0;
 const int RIFF_HEADER_LENGTH = 4;
 const int FMT_HEADER_OFFSET = 12;
 const int FMT_HEADER_LENGTH = 4;
 
-const int FORMAT_OFFSET = 8;
-const int FORMAT_LENGTH = 4;
-const int CHANNEL_OFFSET = 22;
-const int SAMPLE_RATE_OFFSET = 24;
-const int BITS_PER_SAMPLE_OFFSET = 34;
-const int DISTANCE_ID_TO_SIZE = 4;
-const int DISTANCE_ID_TO_DATA = 8;
-const int FIELD_LENGTH = 4;
+const int SUBCHUNK_SIZE_OFFSET = 4;
+const int SUBCHUNK_DATA_OFFSET = 8;
 
 //utility
 union charArrayToInt {
@@ -26,56 +18,13 @@ union charArrayToInt {
 	unsigned int i;
 };
 
-union charToFloat {
-	char c[4];
-	float f;
-}
-
-setNullTerminator(char* string, int length)
-{
-	string[length-1] = '\0';
-}
-
 unsigned int byteswap(void* num) {
 	union charArrayToInt size;
    	memcpy(&size.c, num, 4);
    	return size.i;
 }
 
-//float data
-unsigned int getPositionOfDataID(char* fileData, int fileLength)
-{
-	int pos = FMT_HEADER_OFFSET;
-	while(pos < fileLength && memcmp(fileData+pos, &"data", 4) != 0)
-	{
-	    pos += DISTANCE_ID_TO_DATA + (*(fileData+pos+DISTANCE_ID_TO_SIZE));
-		printf("SubchunkID: %.4s\n", fileData+pos);
-	}
-	if(!(memcmp(fileData+pos, &"data", 4) == 0))
-	    exit;
-	return pos;
-}
-
-unsigned int readDataChunk(char* fileData, int fileLength, float** data)
-{
-	unsigned int pos = getPositionOfDataID(fileData, fileLength);
-    unsigned int length = byteswap(fileData+pos+DISTANCE_ID_TO_SIZE);
-    printf("pos: %u\n", pos);
-    printf("length: %u\n", length);
-    *data = (float*) fileData+pos+DISTANCE_ID_TO_DATA;
-    return length;
-}
-
-//writeback
-void schneller(char* path, float *data, int length, wavheader wave)
-{
-	int halfLength = length / 2;
-	float halfOfData[halfLength];
-	for(int i = 0; i < halfLength; i++)
-		halfOfData[i] = data[i*2];
-	writePCM(path, halfOfData, halfLength, wave);
-}
-
+//read file
 int readFile(char* name, char** data) {
 	FILE* wave;
 	if((wave = fopen(name, "rb")) == NULL)
@@ -112,11 +61,44 @@ int readFile(char* name, char** data) {
 	return length;
 }
 
+//data chunk
+unsigned int getPositionOfDataID(char* fileData, int fileLength)
+{
+	int pos = FMT_HEADER_OFFSET;
+	while(pos < fileLength && memcmp(fileData+pos, &"data", 4) != 0)
+	{
+	    pos += SUBCHUNK_DATA_OFFSET + (*(fileData+pos+SUBCHUNK_SIZE_OFFSET));
+		printf("SubchunkID: %.4s\n", fileData+pos);
+	}
+	if(!(memcmp(fileData+pos, &"data", 4) == 0))
+	    exit;
+	return pos;
+}
+
+unsigned int readDataChunk(char* fileData, int fileLength, float** data)
+{
+	unsigned int pos = getPositionOfDataID(fileData, fileLength);
+    unsigned int length = byteswap(fileData+pos+SUBCHUNK_SIZE_OFFSET);
+    *data = (float*) (fileData+pos+SUBCHUNK_DATA_OFFSET);
+    return length;
+}
+
+//modification
+void schneller(char* path, float *data, int length, wavheader wave)
+{
+	int halfLength = length / 2;
+	float halfOfData[halfLength];
+	for(int i = 0; i < halfLength; i++)
+		halfOfData[i] = data[i*2];
+	writePCM(path, halfOfData, halfLength, wave);
+}
+
+//main
 int main()
 {
 	char* fileData;
 	int fileLength = readFile("test.wav", &fileData);
-	wavheader wave = *((wavheader*)fileData);
+	wavheader wave = *((wavheader*) fileData);
 
 	//print fields of the chunkheaders
 	printf("RIFF ID: %.4s\n", wave.riff_chunk_header.chunk_id);
@@ -131,7 +113,7 @@ int main()
 	printf("length in seconds: %f\n", (float) wave.riff_chunk_header.chunk_size / (float) (wave.byterate));
 
 	float* data;
-	unsigned int length = readDataChunk(fileData, fileLength, &data);
+	int length = readDataChunk(fileData, fileLength, &data);
 
     printf("readDataSuccess\n");
     writePCM("testClone.wav", data, length/4, wave);
