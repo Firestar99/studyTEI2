@@ -18,7 +18,6 @@ const int SAMPLE_RATE_OFFSET = 24;
 const int BITS_PER_SAMPLE_OFFSET = 34;
 const int DISTANCE_ID_TO_SIZE = 4;
 const int DISTANCE_ID_TO_DATA = 8;
-const int SUB_CHUNK_2_ID_OFFSET = 36;
 const int FIELD_LENGTH = 4;
 
 //utility
@@ -79,16 +78,14 @@ unsigned short getBitsPerSample(char* fileData, int fileLength)
 
 unsigned int getPositionOfDataID(char* fileData, int fileLength)
 {
-	int position = SUB_CHUNK_2_ID_OFFSET;
+	int position = FMT_HEADER_OFFSET;
 	char chunkID[5];
 	setNullTerminator(chunkID, FIELD_LENGTH + 1);
 	while(position < fileLength && strcmp(chunkID, "data") != 0)
 	{
+	    position += DISTANCE_ID_TO_DATA + (*(fileData+position+DISTANCE_ID_TO_SIZE));
 		memcpy(chunkID, fileData+position, FIELD_LENGTH);
 		printf("SubchunkID: %s\n", chunkID);
-		if(strcmp(chunkID, "data") != 0){
-	        position += DISTANCE_ID_TO_DATA + (*(fileData+position+DISTANCE_ID_TO_SIZE));
-	    }
 	}
 	if(!(strcmp(chunkID, "data") == 0))
 	{
