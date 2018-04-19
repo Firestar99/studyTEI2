@@ -79,13 +79,16 @@ unsigned short getBitsPerSample(char* fileData, int fileLength)
 
 unsigned int getPositionOfDataID(char* fileData, int fileLength)
 {
-	unsigned int position = SUB_CHUNK_2_ID_OFFSET;
+	int position = SUB_CHUNK_2_ID_OFFSET;
 	char chunkID[5];
 	setNullTerminator(chunkID, FIELD_LENGTH + 1);
-	for(; position < fileLength && strcmp(chunkID, "data") != 0; position += DISTANCE_ID_TO_DATA + (*(fileData+position+DISTANCE_ID_TO_SIZE)))
+	while(position < fileLength && strcmp(chunkID, "data") != 0)
 	{
 		memcpy(chunkID, fileData+position, FIELD_LENGTH);
 		printf("SubchunkID: %s\n", chunkID);
+		if(strcmp(chunkID, "data") != 0){
+	        position += DISTANCE_ID_TO_DATA + (*(fileData+position+DISTANCE_ID_TO_SIZE));
+	    }
 	}
 	if(!(strcmp(chunkID, "data") == 0))
 	{
@@ -94,16 +97,16 @@ unsigned int getPositionOfDataID(char* fileData, int fileLength)
 	return position;
 }
 
-void getLengthOfData(char* fileData, unsigned int position, int* lengthOfData)
+void getLengthOfData(char* fileData, int position, int* lengthOfData)
 {
-	*lengthOfData = (*(fileData+position+DISTANCE_ID_TO_SIZE)) / 4 ;
+	*lengthOfData = *(fileData+position+DISTANCE_ID_TO_SIZE);
 }
 
 float* getFloatArrayOfData(char* fileData, int position, int* lengthOfData)
 {
 	float* data = malloc(*lengthOfData);
 	position += DISTANCE_ID_TO_DATA;
-	for(int i = 0; position < *lengthOfData; i++)
+	for(int i = 0; position < (*lengthOfData/4); i++)
 	{
 		data[i] = *(fileData+position);
 		position += FIELD_LENGTH;
@@ -113,11 +116,11 @@ float* getFloatArrayOfData(char* fileData, int position, int* lengthOfData)
 
 float* readDataChunk(char* fileData, int fileLength ,int *lengthOfData)
 {
-    unsigned int position = getPositionOfDataID(fileData, fileLength);
+    int position = getPositionOfDataID(fileData, fileLength);
     printf("position: %i\n", position);
     getLengthOfData(fileData, position, lengthOfData);
     printf("lengthOfData: %i\n", *lengthOfData);
-    return getFloatArrayOfData;
+    return getFloatArrayOfData(fileData, position, lengthOfData);
 
 }
 
@@ -182,7 +185,6 @@ int main()
 {
 	char* fileData;
 	int fileLength = readFile("test.wav", &fileData);
-
 	//get headers
 	wavheader wave;
 	wave.riff_chunk_header = getHeader(fileData, fileLength, RIFF_HEADER_OFFSET);
@@ -212,24 +214,22 @@ int main()
 
 	wave.sample_rate = getSampleRate(fileData, fileLength);
 	printf("Sample Rate: %u\n", wave.sample_rate);
-
 	wave.bits_per_sample = getBitsPerSample(fileData, fileLength);
 	printf("bits per sample: %u\n", wave.bits_per_sample);
 
-	wave.byterate = wave.sample_rate * wave.channels * wave.bits_per_sample;
+	wave.byterate = wave.sample_rate * wave.channels * wave.bits_per_sample/8;
 	printf("Audiolänge in Sekunden: %f\n", (float)wave.riff_chunk_header.chunk_size / (float)(wave.byterate / 8));
 	wave.format_type = 3;
 	wave.block_align = wave.channels * wave.bits_per_sample / 8;
 
-
-    int* lengthOfData;
+    int length;
+    int *lengthOfData = &length;
 	float* data = readDataChunk(fileData, fileLength, lengthOfData);
-    printf("point2\n");
-//    writePCM("testClone.wav", data, *dataLengthP, wave);
-//	printf("point3\n");
-//
-////    schneller(data, *dataLengthP, wave);
-//	printf("point4\n");
+    printf("readDataSuccess\n");
+    writePCM("testClone.wav", data, (*lengthOfData/4), wave);
+	printf("writePCM done\n");
+    schneller(data, (*lengthOfData/4), wave);
+	printf("schneller done\n");
 
     free(data);
 	free(fileData);
