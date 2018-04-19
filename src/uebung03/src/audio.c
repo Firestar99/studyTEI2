@@ -96,7 +96,10 @@ unsigned int getPositionOfDataID(char* fileData, int fileLength)
 
 void getLengthOfData(char* fileData, int position, int* lengthOfData)
 {
-	*lengthOfData = *(fileData+position+DISTANCE_ID_TO_SIZE);
+	union charArrayToInt size;
+    for (int i = 0; i < 4; i++)
+   		size.c[i] = *(fileData+position+DISTANCE_ID_TO_SIZE+i);
+   	*lengthOfData = size.i;
 }
 
 float* getFloatArrayOfData(char* fileData, int position, int* lengthOfData)
@@ -105,8 +108,13 @@ float* getFloatArrayOfData(char* fileData, int position, int* lengthOfData)
 	position += DISTANCE_ID_TO_DATA;
 	for(int i = 0; position < (*lengthOfData/4); i++)
 	{
-		data[i] = *(fileData+position);
-		position += FIELD_LENGTH;
+//		union charArrayToInt field;
+//		for (int i = 0; i < 4; i++)
+//           	field.c[(i)] = *(fileData+position+i);
+//        data[i] = field.i;
+        data[i] = *(fileData+position);
+        position += FIELD_LENGTH;
+
 	}
 	return data;
 }
@@ -127,12 +135,13 @@ void schneller(float *data, int length, wavheader wave)
 	int halfLength = length / 2;
 	float halfOfData[halfLength];
 	int insert = FALSE;
-	for (int i = 0; i < halfLength; i++)
+	for (int i = 0, j = 0; j < halfLength; i++)
 	{
 		if (insert == TRUE)
 		{
-			halfOfData[i] = data[i];
+			halfOfData[j] = data[i];
 			insert = FALSE;
+			j++;
 		}
 		else
 		{
@@ -211,6 +220,7 @@ int main()
 
 	wave.sample_rate = getSampleRate(fileData, fileLength);
 	printf("Sample Rate: %u\n", wave.sample_rate);
+//	wave.sample_rate = 8000;
 	wave.bits_per_sample = getBitsPerSample(fileData, fileLength);
 	printf("bits per sample: %u\n", wave.bits_per_sample);
 
