@@ -153,7 +153,7 @@ void schneller(float *data, int length, wavheader wave)
 
 int readFile(char* name, char** data) {
 	FILE* wave;
-	if((wave = fopen(name, "r")) == NULL)
+	if((wave = fopen(name, "rb")) == NULL)
 	{
 		printf("Could not read File!");
 		exit;
