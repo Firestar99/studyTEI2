@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include "wave.h"
 
 const int RIFF_HEADER_OFFSET = 0;
@@ -11,18 +10,6 @@ const int FMT_HEADER_LENGTH = 4;
 
 const int SUBCHUNK_SIZE_OFFSET = 4;
 const int SUBCHUNK_DATA_OFFSET = 8;
-
-//utility
-union charArrayToInt {
-	char c[4];
-	unsigned int i;
-};
-
-unsigned int byteswap(void* num) {
-	union charArrayToInt size;
-   	memcpy(&size.c, num, 4);
-   	return size.i;
-}
 
 //read file
 int readFile(char* name, char** data) {
@@ -78,9 +65,8 @@ unsigned int getPositionOfDataID(char* fileData, int fileLength)
 unsigned int readDataChunk(char* fileData, int fileLength, float** data)
 {
 	unsigned int pos = getPositionOfDataID(fileData, fileLength);
-    unsigned int length = byteswap(fileData+pos+SUBCHUNK_SIZE_OFFSET);
     *data = (float*) (fileData+pos+SUBCHUNK_DATA_OFFSET);
-    return length;
+    return fileData+pos+SUBCHUNK_SIZE_OFFSET;
 }
 
 //modification
