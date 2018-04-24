@@ -13,12 +13,14 @@ fi
 projectPath="$scriptDir/$projectName"
 if [ -d $projectPath ]
 then
-  echo "Project Directory $projectPath"
+  echo "Project Directory $projectPath not empty!"
+  exit 1
 fi
 
 echo "Creating Project Named $projectName"
 
-mkdir $projectPath
-cd $projectPath
-mkdir src
-ln -s ../build build
+mkdir -p $projectPath
+mkdir -p $projectPath/src
+
+pathToScript="$(realpath --relative-to=$projectPath $scriptDir)"
+ln -s $pathToScript/build $projectPath/build
