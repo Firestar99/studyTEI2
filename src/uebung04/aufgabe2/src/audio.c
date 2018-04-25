@@ -3,13 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include "wave.h"
-//#define M_PI 3.1415926535897932384626433832795028841971
 
-const int RIFF_HEADER_OFFSET = 0;
-const int RIFF_HEADER_LENGTH = 4;
+
 const int FMT_HEADER_OFFSET = 12;
-const int FMT_HEADER_LENGTH = 4;
-
 const int SUBCHUNK_SIZE_OFFSET = 4;
 const int SUBCHUNK_DATA_OFFSET = 8;
 
@@ -70,7 +66,7 @@ unsigned int readDataChunk(char* fileData, int fileLength, float** data)
     return *((unsigned int*) (fileData+pos+SUBCHUNK_SIZE_OFFSET));
 }
 
-float* sinusSignal(int N, int f, int a, float r)
+float* sinusSignal(int N, float f, float a, float r)
 {
     float* signal = malloc(sizeof(float)*N);
     for(int n = 0; n < N; n++) {
@@ -144,22 +140,22 @@ int main()
 	float* data;
 	int length = readDataChunk(fileData, fileLength, &data) / 4;
 
-    writePCM("regular.wav", data, length, wave);
-
 	float average = getAverage(data, length);
 
     float* signal = sinusSignal(length, 1600, average, wave.sample_rate);
-    dump(signal, length*4);
+    //dump(signal, length*4);
     writePCM("sinus1600Hz", signal, length, wave);
-    printf("writePCM 1 done\n");
+    printf("creating sinus1600Hz done\n");
 
     float* signal2 = sinusSignal(length, 7200, average, wave.sample_rate);
     writePCM("sinus7200Hz", signal2, length, wave);
-    printf("writePCM 2 done\n");
+    printf("creating sinus7200Hz done\n");
 
-    float* mixed = mix(data, signal2, length);
+    //signal 2 ist tiefer
+
+    float* mixed = mix(data, signal, length);
     writePCM("mix", mixed, length, wave);
-    printf("writePCM 3 done\n");
+    printf("creating mix: done\n");
 
 	free(fileData);
 	free(signal);
