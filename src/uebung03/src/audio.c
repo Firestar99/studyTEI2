@@ -66,7 +66,7 @@ unsigned int readDataChunk(char* fileData, int fileLength, float** data)
 {
 	unsigned int pos = getPositionOfDataID(fileData, fileLength);
     *data = (float*) (fileData+pos+SUBCHUNK_DATA_OFFSET);
-    return fileData+pos+SUBCHUNK_SIZE_OFFSET;
+    return *((unsigned int*) (fileData+pos+SUBCHUNK_SIZE_OFFSET));
 }
 
 //modification
