@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include "wave.h"
-#define M_PI 3.1415926535897932384626433832795028841971
+//#define M_PI 3.1415926535897932384626433832795028841971
 
 const int RIFF_HEADER_OFFSET = 0;
 const int RIFF_HEADER_LENGTH = 4;
@@ -12,8 +12,6 @@ const int FMT_HEADER_LENGTH = 4;
 
 const int SUBCHUNK_SIZE_OFFSET = 4;
 const int SUBCHUNK_DATA_OFFSET = 8;
-
-
 
 //read file
 int readFile(char* name, char** data) {
@@ -98,6 +96,44 @@ float* mix(float* signal1, float* signal2, int length)
     return mix;
 }
 
+void dumpPrintHex(char* p, unsigned int l, unsigned int pos)
+{
+	if(pos > l)
+		printf("  ");
+	else
+		printf("%02hhX", p[pos]);
+}
+
+void dumpPrintChar(char* p, unsigned int l, unsigned int pos)
+{
+	if(pos > l)
+		printf(" ");
+	else
+		printf("%c", p[pos]);
+}
+
+void dump(char* p, unsigned int l)
+{
+	for(unsigned int i = 0; i < l+16; i += 16)
+	{
+		printf("%08u ", i);
+		for(unsigned int j = 0; j < 16; j += 2)
+		{
+			dumpPrintHex(p, l, i+j);
+			dumpPrintHex(p, l, i+j+1);
+			printf(" ");
+		}
+		printf(" - ");
+		for(unsigned int j = 0; j < 16; j += 2)
+		{
+			dumpPrintChar(p, l, i+j);
+			dumpPrintChar(p, l, i+j+1);
+			printf(" ");
+		}
+		printf("\n");
+	}
+}
+
 //main
 int main()
 {
@@ -113,6 +149,7 @@ int main()
 	float average = getAverage(data, length);
 
     float* signal = sinusSignal(length, 1600, average, wave.sample_rate);
+    dump(signal, length*4);
     writePCM("sinus1600Hz", signal, length, wave);
     printf("writePCM 1 done\n");
 
