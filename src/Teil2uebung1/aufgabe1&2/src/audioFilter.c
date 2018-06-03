@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "wave.h"
 
 const float TAB_VALUE = 0.05f;
-const int TAB_COUNT = 20;
+const int  TAB_COUNT = 20;
 
 const int FMT_HEADER_OFFSET = 12;
 const int SUBCHUNK_SIZE_OFFSET = 4;
@@ -60,32 +61,20 @@ unsigned int readDataChunk(char *fileData, int fileLength, float **data) {
     return *((unsigned int *) (fileData + pos + SUBCHUNK_SIZE_OFFSET));
 }
 
-void generateNewTabs(float *newTabs, int i, float *data, int length, double *tabs, int tabCount) {
-    for (int k = 0; k < tabCount; k++) {
-        float x = 0;
-        for (int j = 0; j < 4; j++) {
-            x += data[(i - j - 1 + length) % length] * ((float)tabs[j]);
-        }
-        newTabs[k] = ((float)tabs[k]) - 0.01f * data[(i - k - 1+ length) % length] * (x - data[i]);
-    }
-}
-
-float *filter(float *data, int length, double *tabs, int tabCount) {
+float* filter(float *data, int length, double* tabs, int tabCount) {
     float sum = 0;
-    float *newTabs = malloc(sizeof(float) * tabCount);
-    float *filter = malloc(sizeof(float) * length);
+    float* filter = malloc(sizeof(float)*length);
     for (int i = 0; i < length; i++) {
-        generateNewTabs(newTabs, i, data, length, tabs, tabCount);
         for (int j = 0; j < tabCount; j++)
-            sum += data[(i - j + length - 1) % length] * newTabs[j];
+            sum += data[(i-j+length-1)%length] * ((float)tabs[j]);
         filter[i] = sum;
         sum = 0;
     }
-    free(newTabs);
     return filter;
 
 }
 
+//main
 int main() {
     char *fileData;
     int fileLength = readFile("test.wav", &fileData);
@@ -94,12 +83,13 @@ int main() {
     float *data;
     int length = readDataChunk(fileData, fileLength, &data) / 4;
 
-    double *tabs = malloc(sizeof(double) * TAB_COUNT);
+    double* tabs = malloc(sizeof(double)*TAB_COUNT);
     for (int i = 0; i < TAB_COUNT; i++) {
         tabs[i] = TAB_VALUE;
     }
-    float *predictedData = filter(data, length, tabs, TAB_COUNT);
-    writePCM("predictionTest.wav", predictedData, length, wave);
+    float* filteredData = filter(data, length, tabs, TAB_COUNT);
+
+    writePCM("filterTest.wav", filteredData, length, wave);
 
     free(fileData);
     free(tabs);
